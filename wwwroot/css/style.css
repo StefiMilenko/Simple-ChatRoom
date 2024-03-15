@@ -1,0 +1,49 @@
+body{
+    font-family: Arial, sans-serif;
+    text-align: center;
+    align-items: center;
+    height: 50vh;
+    margin: 0;
+}
+#container {
+    display: flex;
+    margin: 0 auto;
+    flex-direction: column;
+}
+#signIn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}    
+#sendMsg {
+    display: none;
+}
+#myForm{
+    display: none;
+}
+#listContainers{
+    display:none;
+    grid-auto-flow: column;
+    grid-column-gap: 10px;
+    justify-content: center;
+    margin: 10px;
+}
+#messagesList {
+    float: left;
+    text-align: left;
+    max-width: calc(50% - 15px);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+#messagesList li, #userlist li {
+    overflow-wrap: break-word;
+    list-style: none;
+    margin-bottom: 5px;
+    white-space: pre-wrap;
+}
+#userList {
+    float: right;
+    text-align: right;
+    max-width: calc(20% - 15px);
+    direction: rtl;
+}

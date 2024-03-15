@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="~/css/style.css" rel="stylesheet">
+    <title>P2P Chat</title>
+</head>
+<body>
+    <div id="container">
+        <h1 style="font-size: 36px; margin-top: 0;">P2P Chat</h1>
+        <div id="signIn">
+            <input type="text" id="userInput" placeholder="Enter your name" />
+            <button onclick="registerUser()">Sign in</button>
+        </div>
+        <div id="sendMsg">
+            <input type="text" id="messageInput" placeholder="Type a message" />
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="logoutUser()">Sign out</button>
+        </div>
+        <form id="myForm">
+            <label>
+                <input type="radio" name="mode" value=1 checked> RC4
+            </label>
+            <label>
+            <input type="radio" name="mode" value="2"> XTEA
+            </label>
+        </form>
+        <div id="listContainers">
+            <div>
+                <p id="messagesLabel" >Messages</p>
+                <ul id="messagesList"></ul>
+            </div>
+            <div>
+                <p id="userListLabel" >Logged in Users:</p>
+                <ul id="userList"></ul>
+            </div>
+        </div>
+    </div>
+
+
+    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/3.1.10/signalr.min.js"></script>
+    <script>   
+        const connection = new signalR.HubConnectionBuilder() //Koristi se SignalR da bi se povezali sa centralnim Hub-om
+        .withUrl("/chathub")
+        .configureLogging(signalR.LogLevel.Information)
+        .build();   
+
+        let currentUser;
+
+        //Kada SignalR primi poruke automatski dodati u listu.
+        connection.on("ReceiveMessage", (messages) => {
+            const messagesList = document.getElementById('messagesList');
+            messagesList.innerHTML = '';
+            messages.forEach(msg => {
+                const li = document.createElement('li');
+                const user = msg.user || 'Unknown User';
+                const message = msg.messageText;
+                const encrypted = msg.messageEncrypted;
+                const mode = msg.mode
+                li.textContent = `${user}: ${message} `; //Pokazuje user-a, poruku i kodiranu poruku //(${encrypted})
+                messagesList.appendChild(li);
+            });
+        });
+
+        //SignlaR dodaje korisnike u userList. Koristi se
+        connection.on("UserListUpdated", (users) => {
+            const userList = document.getElementById("userList");
+            userList.innerHTML = "";
+            users.forEach(user => {
+                const li = document.createElement("li");
+                li.textContent = user;
+                userList.appendChild(li);
+            });
+        });
+
+        connection.start() //Proverava da li se veza lepo uspostavila
+        .then(() => console.log("Connection started"))
+        .catch(err => console.error(err));
+
+        function registerUser() {
+            const userInput = document.getElementById("userInput");
+            const user = userInput.value;
+            currentUser = user; //Cuvamo trenutnog korisnika
+            document.getElementById('sendMsg').style.display = 'block'; //Krije signin a prikazuje za slanje poruka.
+            document.getElementById('signIn').style.display = 'none';
+            document.getElementById("listContainers").style.display = "grid";
+            //document.getElementById("myForm").style.display = "block";
+
+            if (user) {
+                connection.invoke("RegisterUser", currentUser).catch(err => console.error(err));
+            }
+            fetchMessages();
+        }
+
+        function logoutUser() {
+            document.getElementById('sendMsg').style.display = 'none'; 
+            document.getElementById('signIn').style.display = 'block';
+            document.getElementById("listContainers").style.display = "none";
+            document.getElementById("myForm").style.display = "none";
+            connection.invoke("LogoutUser", currentUser).catch(err=> console.error(err));
+        }
+
+        async function fetchMessages(){
+            const response = await fetch('/Home/GetMessagesHub');
+        }
+
+        async function sendMessage() { //Saljemo poruke koristeci POST funkciju iz HomeController
+            //const userInput = document.getElementById('userInput').value; //Koristi se currentUser posto se userInput krije.
+            const messageInput = document.getElementById("messageInput").value;
+            const selectMode = document.querySelector('input[name="mode"]:checked');
+            const modeInput = parseInt(selectMode.value, 10);
+            /*console.log('Selected mode: ' + modeInput);
+            console.log("Mode Input Type:", typeof modeInput);*/
+
+            await fetch("/Home/SendMessage", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                user: currentUser,
+                messageText: messageInput, 
+                mode: modeInput,
+                }),
+            }).then(response => {
+                if (!response.ok) {
+                    console.error("Failed to send message:", response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error("Error during fetch:", error);
+            });
+            //fetchMessages();
+            //console.log("Krece chat hub");
+            const response = await fetch('/Home/GetMessagesHub');
+            document.getElementById('messageInput').value = '';
+        }
+
+    </script>
+</body>
+</html>
